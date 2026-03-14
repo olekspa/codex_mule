@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Codex Mule v0.3.0</title>
+  <style>
+    :root {
+      --bg: #f7f5ef;
+      --panel: #ffffff;
+      --ink: #17212b;
+      --muted: #6b7280;
+      --line: #d7d9dd;
+      --accent: #0f766e;
+      --accent-2: #115e59;
+      --warn: #b91c1c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Manrope", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: radial-gradient(circle at 10% 0%, #fff8e1 0%, var(--bg) 48%), var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 12px;
+      height: 100vh;
+      padding: 12px;
+    }
+    .sidebar {
+      position: relative;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.07);
+      overflow: hidden;
+    }
+    .sidebar-header, .chat-header {
+      padding: 12px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+    .chat-header {
+      padding: 8px 10px;
+    }
+    .title { font-weight: 700; letter-spacing: 0.2px; font-size: 15px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .chat-header .toolbar {
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .chat-header .toolbar button,
+    .chat-header .toolbar select,
+    .chat-header .toolbar input {
+      padding-top: 5px;
+      padding-bottom: 5px;
+      font-size: 12px;
+    }
+    .toolbar input, .toolbar select {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 6px 8px;
+      font: inherit;
+      background: #fff;
+      color: var(--ink);
+    }
+    .threads { overflow: auto; height: calc(100% - 106px); }
+    .thread-actions {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      background: #f8fafc;
+    }
+    .thread-actions button {
+      padding: 7px 9px;
+      font-size: 12px;
+      border-radius: 8px;
+    }
+    .thread {
+      padding: 11px 12px;
+      border-bottom: 1px solid #eceef1;
+      cursor: pointer;
+      transition: background 140ms ease;
+    }
+    .thread:hover { background: #f8fafc; }
+    .thread.active { background: #ecfeff; border-left: 3px solid var(--accent); padding-left: 9px; }
+    .thread .preview { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .thread .meta { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .chat {
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      height: 100%;
+    }
+    .messages {
+      padding: 14px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: linear-gradient(180deg, #f8fafc 0%, #ffffff 220px);
+    }
+    .msg {
+      max-width: 860px;
+      padding: 11px 13px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      line-height: 1.35;
+      white-space: pre-wrap;
+      box-shadow: 0 2px 7px rgba(15, 23, 42, 0.05);
+    }
+    .msg.user { background: #f0fdfa; border-color: #99f6e4; align-self: flex-end; }
+    .msg.agent { background: #f8fafc; align-self: flex-start; }
+    .msg.pending { border-style: dashed; opacity: 0.9; }
+    .msg.failed { border-color: #fca5a5; background: #fff1f2; }
+    .composer {
+      border-top: 1px solid var(--line);
+      padding: 10px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      align-items: start;
+    }
+    textarea {
+      width: 100%;
+      min-height: 72px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      font: inherit;
+      color: var(--ink);
+    }
+    textarea:focus {
+      outline: 2px solid #99f6e4;
+      outline-offset: 1px;
+      border-color: #5eead4;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      transition: filter 120ms ease, transform 120ms ease;
+    }
+    button:hover { filter: brightness(1.06); }
+    button:active { transform: translateY(1px); }
+    button.secondary { background: #334155; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .status { color: var(--muted); font-size: 12px; }
+    .error { color: var(--warn); }
+    .mobile-only { display: none; }
+    .drawer-close {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 2;
+    }
+    @media (max-width: 980px) {
+      body {
+        min-height: 100dvh;
+      }
+      .app {
+        grid-template-columns: 1fr;
+        height: 100dvh;
+        min-height: 100dvh;
+        gap: 8px;
+        padding: 8px;
+      }
+      .panel {
+        min-height: 0;
+      }
+      .chat {
+        min-height: 0;
+      }
+      .chat-header {
+        align-items: flex-start;
+        padding: 8px;
+      }
+      .chat-header .toolbar {
+        justify-content: flex-start;
+      }
+      .header-actions {
+        display: none;
+      }
+      body.mobile-actions-open .header-actions {
+        display: flex;
+        position: fixed;
+        top: 56px;
+        left: 8px;
+        right: 8px;
+        z-index: 26;
+        padding: 8px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--panel);
+        box-shadow: 0 10px 24px rgba(0,0,0,0.16);
+      }
+      .chat-header .toolbar button,
+      .chat-header .toolbar select,
+      .chat-header .toolbar input {
+        max-width: 100%;
+      }
+      .messages {
+        padding: 10px;
+      }
+      .msg {
+        max-width: 100%;
+      }
+      .composer {
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+      .composer textarea {
+        grid-column: 1 / -1;
+        min-height: 96px;
+      }
+      .composer button {
+        width: 100%;
+      }
+      .mobile-only {
+        display: inline-block;
+      }
+      .sidebar {
+        display: none;
+      }
+      body.thread-menu-open .sidebar {
+        display: block;
+        position: fixed;
+        top: 8px;
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        z-index: 30;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      body.thread-menu-open::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        z-index: 20;
+      }
+      body.thread-menu-open .drawer-close {
+        display: inline-block;
+      }
+      .threads {
+        height: calc(100% - 106px);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section id="sidebarPanel" class="panel sidebar">
+      <button id="closeThreadsBtn" class="secondary drawer-close">Close</button>
+      <div class="sidebar-header">
+        <div class="title">Threads</div>
+        <div class="toolbar">
+          <input id="searchInput" placeholder="Search" />
+          <button id="refreshBtn" class="secondary">Refresh</button>
+        </div>
+      </div>
+      <div class="thread-actions">
+        <button id="newThreadBtn" class="secondary">New Thread</button>
+      </div>
+      <div id="threads" class="threads"></div>
+    </section>
+
+    <section class="panel chat">
+      <div class="chat-header">
+        <div>
+        <div class="title">Codex Mule v0.3.0</div>
+          <div id="status" class="status">Loading...</div>
+        </div>
+        <div class="toolbar">
+          <button id="openThreadsBtn" class="secondary mobile-only">Threads</button>
+          <button id="mobileActionsBtn" class="secondary mobile-only">Actions</button>
+          <div id="headerActions" class="header-actions">
+            <label><input id="autoRefreshToggle" type="checkbox" checked /> Auto</label>
+            <select id="autoRefreshInterval">
+              <option value="1.5">1.5s</option>
+              <option value="2.5" selected>2.5s</option>
+              <option value="5">5s</option>
+            </select>
+            <label><input id="ttsAutoToggle" type="checkbox" /> TTS</label>
+          </div>
+        </div>
+      </div>
+      <div id="messages" class="messages"></div>
+      <div class="composer">
+        <textarea id="input" placeholder="Send message to selected thread..."></textarea>
+        <button id="resumeBtn" class="secondary">Resume</button>
+        <button id="sendBtn">Send</button>
+        <button id="retryBtn" class="secondary" style="display:none;">Retry</button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const el = {
+      threads: document.getElementById('threads'),
+      messages: document.getElementById('messages'),
+      status: document.getElementById('status'),
+      input: document.getElementById('input'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      sidebarPanel: document.getElementById('sidebarPanel'),
+      openThreadsBtn: document.getElementById('openThreadsBtn'),
+      mobileActionsBtn: document.getElementById('mobileActionsBtn'),
+      headerActions: document.getElementById('headerActions'),
+      closeThreadsBtn: document.getElementById('closeThreadsBtn'),
+      searchInput: document.getElementById('searchInput'),
+      newThreadBtn: document.getElementById('newThreadBtn'),
+      resumeBtn: document.getElementById('resumeBtn'),
+      sendBtn: document.getElementById('sendBtn'),
+      retryBtn: document.getElementById('retryBtn'),
+      autoRefreshToggle: document.getElementById('autoRefreshToggle'),
+      autoRefreshInterval: document.getElementById('autoRefreshInterval'),
+      ttsAutoToggle: document.getElementById('ttsAutoToggle'),
+    };
+
+    function isMobileLayout() {
+      return window.matchMedia('(max-width: 980px)').matches;
+    }
+
+    function closeThreadMenu() {
+      document.body.classList.remove('thread-menu-open');
+    }
+
+    const forbiddenActionLabels = new Set([
+      'speak last',
+      'assist input',
+      'assist last',
+      'pin',
+      'archive',
+      'unarchive',
+      'materialize',
+    ]);
+    const forbiddenActionIds = new Set([
+      'speaklastbtn',
+      'assistinputbtn',
+      'assistlastbtn',
+      'pinbtn',
+      'archivebtn',
+      'unarchivebtn',
+      'materializebtn',
+    ]);
+
+    function purgeForbiddenButtons() {
+      document.querySelectorAll('button').forEach((btn) => {
+        const id = (btn.id || '').trim().toLowerCase();
+        const label = (btn.textContent || '').trim().toLowerCase();
+        if (forbiddenActionIds.has(id) || forbiddenActionLabels.has(label)) {
+          btn.remove();
+        }
+      });
+    }
+
+    function closeMobileActions() {
+      document.body.classList.remove('mobile-actions-open');
+    }
+
+    function toggleMobileActions() {
+      if (!isMobileLayout()) return;
+      document.body.classList.toggle('mobile-actions-open');
+    }
+
+    function openThreadMenu() {
+      if (!isMobileLayout()) return;
+      closeMobileActions();
+      document.body.classList.add('thread-menu-open');
+    }
+
+    const state = {
+      threads: [],
+      selectedThreadId: null,
+      busy: false,
+      autoRefreshTimer: null,
+      lastThreadUpdatedAt: 0,
+      lastFailedMessage: null,
+      tts: {
+        enabled: false,
+        service: 'tts.speak',
+        entity_id: '',
+        media_player_entity_id: '',
+      },
+    };
+
+    function setStatus(text, isError = false) {
+      el.status.textContent = text;
+      el.status.className = isError ? 'status error' : 'status';
+    }
+
+    async function api(path, options = {}) {
+      const safePath = path.startsWith('/') ? `.${path}` : path;
+      const res = await fetch(safePath, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+      const txt = await res.text();
+      let data;
+      try { data = txt ? JSON.parse(txt) : {}; } catch { data = { raw: txt }; }
+      if (!res.ok) throw new Error(typeof data === 'string' ? data : (data.detail || data.error || txt));
+      return data;
+    }
+
+    function renderThreads() {
+      el.threads.innerHTML = '';
+      const q = (el.searchInput.value || '').trim().toLowerCase();
+      const sorted = [...state.threads].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      for (const t of sorted) {
+        const preview = (t.preview || '(no preview)');
+        if (q && !preview.toLowerCase().includes(q) && !t.id.toLowerCase().includes(q)) continue;
+        const div = document.createElement('div');
+        div.className = 'thread' + (t.id === state.selectedThreadId ? ' active' : '');
+        const dt = new Date((t.updatedAt || t.createdAt || 0) * 1000);
+        div.innerHTML = `
+          <div class="preview">${preview.replaceAll('<','&lt;')}</div>
+          <div class="meta">${t.id.slice(0,8)} • ${t.source || 'unknown'} • ${isNaN(dt) ? '' : dt.toLocaleString()}</div>
+        `;
+        div.onclick = async () => {
+          state.selectedThreadId = t.id;
+          renderThreads();
+          await loadThread(t.id);
+          closeThreadMenu();
+        };
+        el.threads.appendChild(div);
+      }
+    }
+
+    function pushMessage(type, text, extraClass = '') {
+      const d = document.createElement('div');
+      d.className = 'msg ' + (type === 'user' ? 'user' : 'agent') + (extraClass ? ` ${extraClass}` : '');
+      d.textContent = text || '';
+      el.messages.appendChild(d);
+      el.messages.scrollTop = el.messages.scrollHeight;
+    }
+
+    function renderThreadMessages(threadData) {
+      el.messages.innerHTML = '';
+      const turns = threadData?.thread?.turns || [];
+      for (const turn of turns) {
+        for (const item of turn.items || []) {
+          if (item.type === 'userMessage') {
+            const joined = (item.content || []).map(c => c.text || '').join('\n');
+            pushMessage('user', joined);
+          } else if (item.type === 'agentMessage') {
+            pushMessage('agent', item.text || '');
+          }
+        }
+        if (turn.status && turn.status !== 'completed') {
+          pushMessage('agent', `[turn ${turn.status}]`);
+        }
+      }
+    }
+
+    function extractLastAgentText(threadData) {
+      const turns = threadData?.thread?.turns || [];
+      for (let i = turns.length - 1; i >= 0; i--) {
+        const turn = turns[i];
+        const items = turn?.items || [];
+        for (let j = items.length - 1; j >= 0; j--) {
+          const item = items[j];
+          if (item?.type === 'agentMessage' && item?.text) return String(item.text);
+        }
+      }
+      return '';
+    }
+
+    async function speakText(message) {
+      const text = (message || '').trim();
+      if (!text) return;
+      await api('./api/ha/tts', {
+        method: 'POST',
+        body: JSON.stringify({
+          message: text,
+          service: state.tts.service || undefined,
+          entity_id: state.tts.entity_id || undefined,
+          media_player_entity_id: state.tts.media_player_entity_id || undefined,
+        }),
+      });
+    }
+
+    async function loadTtsConfig() {
+      try {
+        const cfg = await api('./api/ha/tts/config');
+        state.tts = {
+          enabled: !!cfg.enabled,
+          service: cfg.service || 'tts.speak',
+          entity_id: cfg.entity_id || '',
+          media_player_entity_id: cfg.media_player_entity_id || '',
+        };
+        el.ttsAutoToggle.checked = state.tts.enabled;
+      } catch (_err) {
+        // Ignore when unavailable; chat can still function without TTS.
+      }
+    }
+
+    async function loadThreads() {
+      setStatus('Loading threads...');
+      const data = await api('./api/threads?limit=50&sourceKinds=vscode');
+      state.threads = data.data || [];
+      state.lastThreadUpdatedAt = state.threads.reduce((m, t) => Math.max(m, t.updatedAt || 0), 0);
+      if (!state.selectedThreadId && state.threads.length) {
+        state.selectedThreadId = state.threads[0].id;
+      }
+      renderThreads();
+      if (state.selectedThreadId) {
+        await loadThread(state.selectedThreadId);
+      } else {
+        setStatus('No threads found. Create a new thread.');
+      }
+    }
+
+    async function loadThread(threadId, silent = false) {
+      if (!silent) setStatus('Loading thread...');
+      const data = await api(`./api/threads/${threadId}?includeTurns=true`);
+      renderThreadMessages(data);
+      const found = state.threads.find(t => t.id === threadId);
+      if (found && found.updatedAt) state.lastThreadUpdatedAt = Math.max(state.lastThreadUpdatedAt, found.updatedAt);
+      if (!silent) setStatus(`Thread ${threadId.slice(0,8)} loaded`);
+    }
+
+    async function createThread() {
+      setStatus('Creating thread...');
+      const data = await api('./api/threads/start', {
+        method: 'POST',
+        body: JSON.stringify({ approvalPolicy: 'never' }),
+      });
+      const id = data?.thread?.id;
+      if (!id) throw new Error('thread/start returned no id');
+      state.selectedThreadId = id;
+      await loadThreads();
+      setStatus(`New thread ${id.slice(0,8)} created`);
+    }
+
+    async function resumeThread() {
+      if (!state.selectedThreadId) return;
+      setStatus('Resuming thread...');
+      await api(`./api/threads/${state.selectedThreadId}/resume`, {
+        method: 'POST',
+        body: JSON.stringify({}),
+      });
+      setStatus('Thread resumed');
+    }
+
+    async function sendMessage() {
+      const text = el.input.value.trim();
+      if (!text) return;
+      if (!state.selectedThreadId) {
+        await createThread();
+      }
+      if (state.busy) return;
+      state.busy = true;
+      el.sendBtn.disabled = true;
+
+      try {
+        pushMessage('user', text, 'pending');
+        pushMessage('agent', 'Waiting for model response...', 'pending');
+        el.input.value = '';
+        setStatus('Sending...');
+
+        const out = await api(`./api/threads/${state.selectedThreadId}/turns`, {
+          method: 'POST',
+          body: JSON.stringify({ text, wait: true }),
+        });
+
+        const read = out.threadRead || out;
+        renderThreadMessages(read);
+        if (el.ttsAutoToggle.checked) {
+          const lastAgent = extractLastAgentText(read);
+          if (lastAgent) {
+            try {
+              await speakText(lastAgent);
+            } catch (ttsErr) {
+              setStatus(`TTS error: ${String(ttsErr)}`, true);
+            }
+          }
+        }
+        setStatus('Completed');
+        await loadThreads();
+        state.lastFailedMessage = null;
+        el.retryBtn.style.display = 'none';
+      } catch (err) {
+        setStatus(String(err), true);
+        state.lastFailedMessage = text;
+        el.retryBtn.style.display = 'inline-block';
+        pushMessage('agent', `Failed: ${String(err)}`, 'failed');
+      } finally {
+        state.busy = false;
+        el.sendBtn.disabled = false;
+      }
+    }
+
+    el.refreshBtn.onclick = () => loadThreads().catch(e => setStatus(String(e), true));
+    el.openThreadsBtn.onclick = () => openThreadMenu();
+    el.mobileActionsBtn.onclick = () => toggleMobileActions();
+    el.headerActions.onclick = (e) => {
+      if (!isMobileLayout()) return;
+      const target = e.target;
+      if (target instanceof HTMLElement && target.closest('button')) {
+        closeMobileActions();
+      }
+    };
+    el.closeThreadsBtn.onclick = () => closeThreadMenu();
+    el.newThreadBtn.onclick = () => createThread().catch(e => setStatus(String(e), true));
+    el.resumeBtn.onclick = () => resumeThread().catch(e => setStatus(String(e), true));
+    el.searchInput.oninput = () => renderThreads();
+    el.sendBtn.onclick = () => sendMessage();
+    el.retryBtn.onclick = async () => {
+      if (!state.lastFailedMessage) return;
+      el.input.value = state.lastFailedMessage;
+      await sendMessage();
+    };
+    el.input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    window.addEventListener('resize', () => {
+      if (!isMobileLayout()) closeThreadMenu();
+      if (!isMobileLayout()) closeMobileActions();
+    });
+    document.addEventListener('click', (e) => {
+      if (!isMobileLayout()) return;
+      if (!document.body.classList.contains('thread-menu-open')) return;
+      if (el.sidebarPanel.contains(e.target) || el.openThreadsBtn.contains(e.target)) return;
+      closeThreadMenu();
+    });
+    document.addEventListener('click', (e) => {
+      if (!isMobileLayout()) return;
+      if (!document.body.classList.contains('mobile-actions-open')) return;
+      if (el.mobileActionsBtn.contains(e.target) || el.headerActions.contains(e.target)) return;
+      closeMobileActions();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeThreadMenu();
+        closeMobileActions();
+      }
+    });
+
+    function resetAutoRefreshTimer() {
+      if (state.autoRefreshTimer) clearInterval(state.autoRefreshTimer);
+      state.autoRefreshTimer = setInterval(async () => {
+        if (!el.autoRefreshToggle.checked || !state.selectedThreadId || state.busy) return;
+        try {
+          const delta = await api(`./api/threads?limit=50&sourceKinds=vscode&updatedAfter=${state.lastThreadUpdatedAt}`);
+          if ((delta.data || []).length > 0) {
+            await loadThreads();
+            await loadThread(state.selectedThreadId, true);
+          }
+        } catch (_err) {
+          // Ignore transient poll errors; explicit actions still surface errors.
+        }
+      }, Math.max(800, Number(el.autoRefreshInterval.value) * 1000));
+    }
+    el.autoRefreshToggle.onchange = () => resetAutoRefreshTimer();
+    el.autoRefreshInterval.onchange = () => resetAutoRefreshTimer();
+    el.ttsAutoToggle.onchange = () => {
+      state.tts.enabled = el.ttsAutoToggle.checked;
+    };
+    purgeForbiddenButtons();
+    new MutationObserver(() => purgeForbiddenButtons()).observe(document.body, { childList: true, subtree: true });
+    resetAutoRefreshTimer();
+    Promise.all([loadTtsConfig()]).finally(() => {
+      loadThreads().catch(e => setStatus(String(e), true));
+    });
+  </script>
+</body>
+</html>

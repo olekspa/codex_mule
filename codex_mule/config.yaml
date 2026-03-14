@@ -1,0 +1,47 @@
+name: Codex Mule
+version: 0.3.0
+slug: codex_mule
+description: Dedicated Home Assistant chat panel for the Codex Mule relay stack.
+url: https://github.com/olekspa/ha_addon_codex_chat
+image: ghcr.io/olekspa/{arch}-codex_mule
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:chat-processing
+panel_title: Codex Mule
+ports: {}
+ports_description: {}
+options:
+  relay_url: "http://192.168.1.100:8765"
+  relay_token: ""
+  default_wait: true
+  wait_timeout: 120
+  poll_interval: 1.0
+  tts_enabled: false
+  tts_service: "tts.speak"
+  tts_entity_id: ""
+  tts_media_player_entity_id: ""
+  assist_enabled: false
+  assist_agent_id: ""
+  assist_language: ""
+  notify_webhook_id: "velox_codex_mule_webhook"
+schema:
+  relay_url: str
+  relay_token: password
+  default_wait: bool
+  wait_timeout: int(10,900)
+  poll_interval: float(0.2,5.0)
+  tts_enabled: bool
+  tts_service: str
+  tts_entity_id: str
+  tts_media_player_entity_id: str
+  assist_enabled: bool
+  assist_agent_id: str
+  assist_language: str
+  notify_webhook_id: str
