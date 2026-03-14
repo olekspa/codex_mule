@@ -2,7 +2,7 @@ name: Codex Mule
 version: 0.3.0
 slug: codex_mule
 description: Dedicated Home Assistant chat panel for the Codex Mule relay stack.
-url: https://github.com/olekspa/ha_addon_codex_chat
+url: https://github.com/olekspa/codex_mule
 image: ghcr.io/olekspa/{arch}-codex_mule
 arch:
   - amd64
