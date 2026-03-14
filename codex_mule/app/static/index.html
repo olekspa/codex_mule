@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Codex Mule v0.3.1</title>
+  <title>Codex Mule v0.3.3</title>
   <style>
     :root {
       --bg: #f7f5ef;
@@ -291,7 +291,7 @@
     <section class="panel chat">
       <div class="chat-header">
         <div>
-        <div class="title">Codex Mule v0.3.1</div>
+        <div class="title">Codex Mule v0.3.3</div>
           <div id="status" class="status">Loading...</div>
         </div>
         <div class="toolbar">
@@ -413,6 +413,39 @@
     }
 
     async function api(path, options = {}) {
+      function formatApiError(payload, fallback = '') {
+        if (typeof payload === 'string' && payload.trim()) return payload;
+        if (!payload || typeof payload !== 'object') return fallback || 'Request failed';
+
+        const detail = payload.detail;
+        if (typeof detail === 'string' && detail.trim()) return detail;
+        if (Array.isArray(detail) && detail.length) {
+          return detail.map((item) => {
+            if (typeof item === 'string') return item;
+            if (item && typeof item === 'object') {
+              const loc = Array.isArray(item.loc) ? item.loc.join('.') : '';
+              const msg = typeof item.msg === 'string' ? item.msg : JSON.stringify(item);
+              return loc ? `${loc}: ${msg}` : msg;
+            }
+            return String(item);
+          }).join('; ');
+        }
+        if (detail && typeof detail === 'object') {
+          try { return JSON.stringify(detail); } catch (_) {}
+        }
+
+        if (typeof payload.error === 'string' && payload.error.trim()) return payload.error;
+        if (payload.error && typeof payload.error === 'object') {
+          try { return JSON.stringify(payload.error); } catch (_) {}
+        }
+        if (typeof payload.raw === 'string' && payload.raw.trim()) return payload.raw;
+        try {
+          const text = JSON.stringify(payload);
+          if (text && text !== '{}') return text;
+        } catch (_) {}
+        return fallback || 'Request failed';
+      }
+
       const safePath = path.startsWith('/') ? `.${path}` : path;
       const res = await fetch(safePath, {
         ...options,
@@ -424,7 +457,9 @@
       const txt = await res.text();
       let data;
       try { data = txt ? JSON.parse(txt) : {}; } catch { data = { raw: txt }; }
-      if (!res.ok) throw new Error(typeof data === 'string' ? data : (data.detail || data.error || txt));
+      if (!res.ok) {
+        throw new Error(formatApiError(data, txt || `${res.status} ${res.statusText}`));
+      }
       return data;
     }
 
@@ -606,10 +641,11 @@
         state.lastFailedMessage = null;
         el.retryBtn.style.display = 'none';
       } catch (err) {
-        setStatus(String(err), true);
+        const message = err instanceof Error ? err.message : String(err);
+        setStatus(message, true);
         state.lastFailedMessage = text;
         el.retryBtn.style.display = 'inline-block';
-        pushMessage('agent', `Failed: ${String(err)}`, 'failed');
+        pushMessage('agent', `Failed: ${message}`, 'failed');
       } finally {
         state.busy = false;
         el.sendBtn.disabled = false;

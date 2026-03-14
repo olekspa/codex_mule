@@ -87,7 +87,7 @@ python3 relay/codex_relay.py --host 0.0.0.0 --port 8765
 The add-on uses:
 - `image: ghcr.io/olekspa/{arch}-codex_mule`
 
-So version `0.3.1` must exist as image tags:
-- `ghcr.io/olekspa/amd64-codex_mule:0.3.1`
-- `ghcr.io/olekspa/aarch64-codex_mule:0.3.1`
-- `ghcr.io/olekspa/armv7-codex_mule:0.3.1`
+So version `0.3.3` must exist as image tags:
+- `ghcr.io/olekspa/amd64-codex_mule:0.3.3`
+- `ghcr.io/olekspa/aarch64-codex_mule:0.3.3`
+- `ghcr.io/olekspa/armv7-codex_mule:0.3.3`
