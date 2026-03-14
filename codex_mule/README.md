@@ -82,11 +82,12 @@ python3 relay/codex_relay.py --host 0.0.0.0 --port 8765
 2. Push commit to GitHub.
 3. Create matching tag `v<version>` and push it.
 4. Wait for workflow `Build Add-on Images` to publish GHCR images.
+5. Ensure each GHCR package is public (or HA has credentials).
 
 The add-on uses:
 - `image: ghcr.io/olekspa/{arch}-codex_mule`
 
-So version `0.3.0` must exist as image tags:
-- `ghcr.io/olekspa/amd64-codex_mule:0.3.0`
-- `ghcr.io/olekspa/aarch64-codex_mule:0.3.0`
-- `ghcr.io/olekspa/armv7-codex_mule:0.3.0`
+So version `0.3.1` must exist as image tags:
+- `ghcr.io/olekspa/amd64-codex_mule:0.3.1`
+- `ghcr.io/olekspa/aarch64-codex_mule:0.3.1`
+- `ghcr.io/olekspa/armv7-codex_mule:0.3.1`

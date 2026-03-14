@@ -1,0 +1,83 @@
+name: Build Add-on Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            platform: linux/amd64
+            build_from: ghcr.io/home-assistant/amd64-base:3.20
+          - arch: aarch64
+            platform: linux/arm64
+            build_from: ghcr.io/home-assistant/aarch64-base:3.20
+          - arch: armv7
+            platform: linux/arm/v7
+            build_from: ghcr.io/home-assistant/armv7-base:3.20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Compute version
+        id: meta
+        shell: bash
+        run: |
+          version="$(awk -F': ' '/^version:/{print $2}' codex_mule/config.yaml | tr -d '[:space:]')"
+          if [ -z "$version" ]; then
+            echo "Failed to parse version from codex_mule/config.yaml" >&2
+            exit 1
+          fi
+          owner_lc="$(echo "${GITHUB_REPOSITORY_OWNER}" | tr '[:upper:]' '[:lower:]')"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "owner=${owner_lc}" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure git tag matches add-on version
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="${{ steps.meta.outputs.version }}"
+          if [ "$tag" != "$version" ]; then
+            echo "Tag v$tag does not match add-on version $version" >&2
+            exit 1
+          fi
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.arch }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./codex_mule
+          file: ./codex_mule/Dockerfile
+          platforms: ${{ matrix.platform }}
+          push: true
+          build-args: |
+            BUILD_FROM=${{ matrix.build_from }}
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ matrix.arch }}-codex_mule:${{ steps.meta.outputs.version }}
+            ghcr.io/${{ steps.meta.outputs.owner }}/${{ matrix.arch }}-codex_mule:latest
